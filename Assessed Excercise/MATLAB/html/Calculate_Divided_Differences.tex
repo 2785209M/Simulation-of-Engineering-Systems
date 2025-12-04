@@ -1,0 +1,41 @@
+
+% This LaTeX was auto-generated from MATLAB code.
+% To make changes, update the MATLAB code and republish this document.
+
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{color}
+
+\sloppy
+\definecolor{lightgray}{gray}{0.5}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+    
+    \begin{verbatim}
+function table = Calculate_Divided_Differences(x, y)
+    n = length(y);
+    table = zeros(n, n+1); % initialize matrix for storing values
+    table(:, 1) = x(:); % Set Column 1 as the x values
+    table(:, 2) = y(:); % Set Column 2 as the y values
+
+    for j = 3:n+1 % Alter the loop accordingly to start at column 3
+        for i = j-1:n
+         % f(xn, xn-1) =  (yn - yn-1)    /      (xn-1 - xn)
+            table(i,j) = ((table(i,j-1) - table(i-1,j-1))) / ((x(i) - x(i-j+2)));
+        end
+    end
+end
+\end{verbatim}
+
+        \color{lightgray} \begin{verbatim}Not enough input arguments.
+
+Error in Calculate_Divided_Differences (line 2)
+    n = length(y);
+               ^\end{verbatim} \color{black}
+    
+
+
+\end{document}
+

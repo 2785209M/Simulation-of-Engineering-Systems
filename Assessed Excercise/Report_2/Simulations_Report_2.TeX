@@ -1,0 +1,251 @@
+\documentclass{article}
+\usepackage[margin = 0.1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{placeins}
+
+\graphicspath{{../MATLAB/}{./images/}}
+
+\title{Simulation of Engineering Systems Report 2}
+\author{James Henrik Middleton}
+\date{November 2025}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction} %======================================================================
+
+\begin{flushleft}
+    The goal of the second part of this assignment is to improve the controller functionality of the design from part 1. 
+    The primary improvement that will be made is the fine-tuning of the Gain parameter $G_C$. 
+    Once the system is performing better we will investigate the effect of changing the key parameter $\theta_U$
+    (Upper arm deflection angle) has on the rest of the system. We will achieve this by using interpolation on $\theta_U$
+    at specific time points supplied by the lab sheet.
+\end{flushleft}
+
+\section{Changing the Gain Term} %==============================================================
+
+\begin{figure}[htbp!]
+    \center
+    \includegraphics[width=0.75\linewidth]{GC_Variation.png}
+    \caption{GC Variations\\}
+\end{figure}
+\FloatBarrier
+\hfill
+\begin{flushleft}
+    Figure 1 shows the affect altering GC has on $\theta_M$, $\theta_{G1}$, and $\theta_F$.
+    In each case reducing the size of $G_C$ reduces oscillation significantly. For the original value
+    of 3.5 provided by the labsheet the oscillations are very large. Values above 0.5 increase the amount of oscillations
+    in the system, and values below 0.2 introduce significant damping. Based on this data a value of 0.2 is the 
+    most practical decision for $G_C$.
+\end{flushleft}
+
+\section{Selecting the Integration Coefficent} %============================================================
+
+\begin{flushleft}
+    In order to improve the functionality of the simulation a new integration term was added. This term uses a coefficient 
+    called Ki to act as gain and a coefficent call I to collect the sum of total past errors. Combining these terms and adding the current error
+    gives the overall integration coefficient used to create Ve.
+\end{flushleft}
+
+\begin{figure}[htbp!] % Integration Code
+    \center
+    \includegraphics[width=0.6\linewidth]{Integration_Code.png}
+    \caption*{Integration Code}
+\end{figure}
+
+\begin{flushleft}
+    The code above Shows the method used to calculate the error, integration state, and integral term. I is a sum of the past errors
+    Ve is calculate by multiplying $G_C$ in the system and e is the current error. The integral term KI is calculate by multiplying the integral state (I) by the 
+    integral coefficient (Ki). KI is then used to calculate the controller voltage and therefore the Actuator Input voltage.
+\end{flushleft}
+
+\begin{figure}[htbp!] % Integration Coefficients
+    \center
+    \includegraphics[width=0.8\linewidth]{Integration_Coefficients.png}
+    \caption{Effect of Varing the Integration Coefficient (Gc fixed at 0.2)\\}
+    \FloatBarrier
+\end{figure}
+
+\begin{flushleft}
+    Figure 2 shows the effect that multiple different values of Ki have on the system deflection angles.
+    Values of Ki above 1 lead to oscillations in the system, and values below approximately 0.4 slow down movement.
+    A Ki value of 0.5 allows the arm to move smoothly and reach $\theta_{ref}$ the fastest out of the tested values,
+    and so was selected to be used for the final design.
+\end{flushleft} 
+
+\section{Interpolation of $\theta_U$} %==========================================================
+
+\subsection{Manual Interpolation}
+
+\begin{flushleft}
+    The table below shows the table produced from performing manual polynomial interpolation using Newton's Divided Differences.
+\end{flushleft}
+
+\begin{figure}[htbp!]
+\centering
+\begin{tabular}{c c c c c c c}
+\hline
+$x$ & $f[x]$ & Order 1 & Order 2 & Order 3 & Order 4 & Order 5 \\
+\hline
+0       & 3       & 5        & -0.2273     & $5.3163\times10^{-4}$ & $7\times10^{-4}$ & $5\times10^{-5}$\\
+1.5     & 10.5    & 3.75     & -0.2193     & 0.0153                &   $8\times10^{-4}$  & \\
+5.5     & 25.5    & 0.7895   & 0.0781      & -0.0075               &                     & \\
+15      & 33      & 2        &  -0.0982    &                       &                     & \\
+21      & 45      & 0.625    &             &                       &                     & \\
+29      & 50      &          &             &                       &                     & \\
+\hline
+\end{tabular}
+\end{figure}
+\FloatBarrier
+
+\begin{center}
+    The coefficients extracted from this table can then be used in Newtons Polynomial Interpolation Equation.
+\end{center}
+
+\begin{center}
+    \begin{align*}
+        f(x) = 3 + (x-0)*( 5 + (x-1.5)*( -0.22727 + (x-5.5)*(0.00053 + (x-15)*( 0.0007 + (x-21)*( -0.00005 ) ) ) ) ) \\
+        \Rightarrow f(0) = 3, f(1.5) = 10.5, f(5.5) = 25.5, f(15) = 33, f(21) = 45, f(29) = 50
+    \end{align*}
+\end{center}
+\FloatBarrier
+
+\begin{center}
+    The code below shows how this equation has been converted into MATLAB code.
+\end{center}
+
+\begin{figure}[htbp!] % Manual Interpolation
+    \center
+    \includegraphics[width=.7\linewidth]{Manual_Interpolation.png}
+\end{figure}
+\FloatBarrier
+
+\begin{center}
+    This manual meethod was used to validate the automatic functions at specific time intervals.
+\end{center}
+
+\subsection{Interpolation through code} % ==========================================
+
+\begin{flushleft}
+    The code below shows the method used to derive the polynomial coefficients from a static array. It automatically
+    creates a Divided Differences table from two equal sized input arrays. Each coefficient from the table is then 
+    extracted to be used in futher calculation. It has been validated against the manual interpolation table.
+\end{flushleft}
+
+\begin{figure}[htbp!] % Calculate Divided Differences
+    \center
+    \includegraphics[width=0.6\linewidth]{Calculate_Divided_Differences.png}
+    \caption*{Divided Differences Code}
+\end{figure}
+
+\begin{flushleft}
+    The table below was produced by performing newtons divided difference evaluation on the table of values
+    provided by the data sheet. The coefficients produced can be passed into the polynomial evaluation function to produce
+     $\theta_U$. 
+\end{flushleft}
+
+\begin{figure}[htbp!] % Divided Differences Table
+    \center
+    \includegraphics[width=0.6\linewidth]{DD_Table.png}
+    \caption*{Divided Differences Table From MATLAB Code}
+\end{figure}
+\FloatBarrier
+
+\begin{flushleft}
+    The code below details the process used to statically interpolate $\theta_U$ using the coefficients from the divided differences.
+    In the static method all values are passed to the array "thetaUvals" to be printed later in the interpolated graph.
+    The 'k' loop effectively emulates the passing of time, with xf being analogous to the time value. This allows interpolation
+    outside of an external loop. However inserting this function into the main program would not work. The main function requires
+    a dynamic function to calculate one $\theta_U$ value for each iteration of the Main loop, to be passed into the robot arm and rk4int functions.
+    In the Dynamic Interpolation section the code from Polynomial Evaluation is refactored and simplified for integration into the main loop.
+\end{flushleft}
+
+\begin{figure}[htbp!] % Polynomial Evaluation
+    \center
+    \includegraphics[width=0.8\linewidth]{Polynomial_Evaluation.png}
+    \caption*{Polynomial Evaluation Code}
+\end{figure}
+\FloatBarrier
+
+\begin{figure}[htbp!] % Interpolated Data
+    \center
+    \includegraphics[width=0.7\linewidth]{Interpolated_Data.png}
+    \caption{Interpolated Graph of $\theta_U$ From Sample Data}
+\end{figure}
+\FloatBarrier
+
+\begin{flushleft}
+    Figure 3 shows the graph of $\theta_U$ produced from static interpolation of the points provided. The line passes
+    through all of the provided points which indicates that the method is valid. Towards the end of the line there is an oscillation
+    that goes above the highest $theta_U$ value that was provided. This is known as Runge's phenomenon and is very common
+    in high order polynomial interpolation.
+\end{flushleft}
+
+\section{Dynamic Interpolation} % ================================
+
+\begin{figure*}[htbp!] % Realtime Interpolation
+    \center
+    \includegraphics[width=0.8\linewidth]{Interpolation_Realtime.png}
+    \center{Realtime Interpolation}
+\end{figure*}
+\FloatBarrier
+
+\begin{flushleft}
+    The code above displays the function used to calculate polynomial interpolation at specific points in realtime.
+\end{flushleft}
+
+\begin{figure*}[htbp!] % Interpolation Function calls
+    \centering
+    \begin{subfigure}{0.49\linewidth}
+    \includegraphics[width=\linewidth]{Interpolation_Function_Calls.png}
+    \subcaption*{Interpolation Function calls}
+    \end{subfigure}
+    \begin{subfigure}{0.45\linewidth}
+    \includegraphics[width=\linewidth]{Dynamic_Calculations.png}
+    \subcaption*{Dynamic Interpolation}
+    \end{subfigure}
+\end{figure*}
+\FloatBarrier
+
+\begin{flushleft}
+    The code above shows how the interpolation code has been inserted into the Main function. Outside of the main loop the table is created
+    and the coefficients are initialized. Inside of the main loop the realtime interpolation function is applied to produce interpolated 
+    $\theta_U$ values at each timestep interval, which are passed into the robot arm and rk4int functions.
+\end{flushleft}
+
+\begin{figure}[htbp!] % Interpolated Graphs
+    \center
+    \includegraphics[width=0.75\linewidth]{Interpolated_Graphs.png}
+    \caption{Graphs of State Variables with Dynamic interpolation of $\theta_U$}
+\end{figure}
+\FloatBarrier
+
+\begin{flushleft}
+    The graphs in Figure 5 were produced by altering $G_C$ to 0.2, introducing the integration term $K_i$, and the dynamic interpolation of $\theta_U$ within the main loop.
+    The motor current stabilized significantly, rising and falling smoothly and quickly, coming to rest at 0 in approximately 1.2 seconds.
+    The motor Angle and angular velocity stabilized significantly, following a steep and then shallow curve, with movement mostly stopping at approximately 2 seconds and coming to complete rest at approximately 5 seconds.
+    The Gear Angle and Angular Velocity likewise stabilized significantly, following an almost identical path to the Motor Angle.
+    The Forearm Angle Smoothly raises steadily to an angle of approximately 0.41 radians. It then gradually falls back to 7\textdegree .
+    Likewise forearm angular velocity rises and then dips slightly below zero until coming to rest, which allows for the forearm angle to decrease.
+    This is due to the effect gravity has on the system. If Gravity is removed then this does not happen, and if the forearm length or weight is
+    increased it gets worse. To prevent this there would have to be constant current applied to the circuit to maintain an equal upwards
+    acceleration against gravity.
+\end{flushleft}
+
+\section{Conclusion}
+
+\begin{flushleft}
+    Overall this Simulation is a significant improvement on the original. By carefully tuning gain values jitter has been practically removed from the system
+    and it operates smoothly. This shows how important the simulation phase can be when designing a product. However some improvement
+    can still be made on the system. The arm does not reach the desired apogee of 55\textdegree, stopping at just under halfway. From experimentation
+    it has been deduced that this is due to the effect gravitational constant has on the arm. Once the motor stops recieving current,
+    the torque applied to the system in the upwards direction reduces to zero, and the effect of gravity takes over pulling the arm down.
+    In order to prevent this it would be possible to implement a system with a constant low current to combat gravity, or increase the moment of inertia of the
+    components so that gravity is not strong enough to pull the arm down.
+\end{flushleft}
+
+\end{document}
